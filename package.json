@@ -1,0 +1,41 @@
+{
+  "name": "findarepo-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for findarepo.com that finds the best MCP servers, Claude skills, and trending GitHub repos, ranked daily by measured star velocity.",
+  "type": "module",
+  "bin": {
+    "findarepo-mcp": "index.js"
+  },
+  "files": [
+    "index.js",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "findarepo",
+    "github",
+    "claude",
+    "claude-code",
+    "cursor",
+    "trending",
+    "discovery"
+  ],
+  "author": "findarepo (https://findarepo.com)",
+  "license": "MIT",
+  "homepage": "https://findarepo.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Chiefaii/findarepo-mcp"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.23.8"
+  }
+}
