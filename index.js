@@ -8,7 +8,24 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod';
 
 const BASE = process.env.FINDAREPO_BASE || 'https://findarepo.com';
+const VERSION = '1.0.0';
 const TTL_MS = 10 * 60 * 1000; // cache feeds for 10 min — they only change daily
+
+// Anonymous, opt-out usage ping. Sends ONLY the tool name and this server's
+// version, never your arguments, queries, or any personal data. Fire-and-forget:
+// it never blocks a tool call and never throws if findarepo is unreachable.
+// Disable entirely with FINDAREPO_TELEMETRY=0 (see README).
+const TELEMETRY = !/^(0|false|off|no)$/i.test(process.env.FINDAREPO_TELEMETRY || '');
+function ping(tool) {
+  if (!TELEMETRY) return;
+  try {
+    fetch(`${BASE}/api/mcp.php?t=${encodeURIComponent(tool)}&v=${VERSION}`, {
+      method: 'GET',
+      headers: { 'user-agent': `findarepo-mcp/${VERSION}` },
+      signal: AbortSignal.timeout(1500),
+    }).catch(() => {});
+  } catch { /* never throw from telemetry */ }
+}
 
 // ---- tiny cached fetch -----------------------------------------------------
 const cache = new Map();
@@ -44,7 +61,7 @@ const textResult = (header, items, note) => ({
 });
 
 // ---- server ----------------------------------------------------------------
-const server = new McpServer({ name: 'findarepo', version: '1.0.0' });
+const server = new McpServer({ name: 'findarepo', version: VERSION });
 
 server.tool(
   'search_mcp_servers',
@@ -52,6 +69,7 @@ server.tool(
   { query: z.string().optional().describe('Keywords to match against repo name, summary, language, or category. Omit to get the overall top MCP servers.'),
     limit: z.number().int().min(1).max(50).default(10).describe('Max results to return.') },
   async ({ query, limit }) => {
+    ping('search_mcp_servers');
     const doc = await getJSON('/data/mcp.json');
     const items = doc.items.filter((it) => matches(it, query)).slice(0, limit);
     return textResult(query ? `Top MCP servers for "${query}":` : 'Top MCP servers right now:', items,
@@ -65,6 +83,7 @@ server.tool(
   { query: z.string().optional().describe('Keywords to match. Omit for the overall top Claude skills.'),
     limit: z.number().int().min(1).max(50).default(10) },
   async ({ query, limit }) => {
+    ping('search_claude_skills');
     const doc = await getJSON('/data/skills.json');
     const items = doc.items.filter((it) => matches(it, query)).slice(0, limit);
     return textResult(query ? `Top Claude skills for "${query}":` : 'Top Claude skills right now:', items,
@@ -79,6 +98,7 @@ server.tool(
     language: z.string().optional().describe('Programming language to filter by, e.g. Python, TypeScript, Rust.'),
     limit: z.number().int().min(1).max(50).default(10) },
   async ({ category, language, limit }) => {
+    ping('get_trending_repos');
     let items, header;
     if (category) {
       const doc = await getJSON('/data/categories.json');
@@ -99,6 +119,7 @@ server.tool(
   { repoA: z.string().describe('First repo as owner/name, e.g. modelcontextprotocol/servers.'),
     repoB: z.string().describe('Second repo as owner/name.') },
   async ({ repoA, repoB }) => {
+    ping('compare_repos');
     // search across all feeds for each repo's measured row
     const feeds = await Promise.all(['/data/trending.json', '/data/mcp.json', '/data/skills.json'].map(getJSON));
     const all = new Map();
@@ -121,6 +142,7 @@ server.tool(
   'Check whether a GitHub repo\'s stars look organic or show signs of inflation, using findarepo\'s fake-star analysis (star burst detection + stargazer-account sampling). Use when a user is skeptical of a repo\'s star count.',
   { repo: z.string().describe('Repo as owner/name.') },
   async ({ repo }) => {
+    ping('check_star_credibility');
     let idx = {};
     try { idx = await getJSON('/assets/credibility-index.json'); } catch { /* non-fatal */ }
     const entry = idx[repo];

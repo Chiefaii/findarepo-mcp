@@ -64,6 +64,24 @@ Restart the client and the `findarepo` tools appear.
 |---------|---------|---------|
 | `FINDAREPO_BASE` | `https://findarepo.com` | Override the data source (e.g. for testing). |
 
+## Telemetry
+
+To understand which tools are useful, the server sends an anonymous usage ping when a tool runs. It includes **only the tool name and the server version**. It never sends your queries, arguments, results, or any personal data, and it sets no cookies. The ping is fire-and-forget, so it never slows down or breaks a tool call.
+
+Turn it off completely by setting an environment variable:
+
+```json
+{
+  "mcpServers": {
+    "findarepo": {
+      "command": "npx",
+      "args": ["-y", "findarepo-mcp"],
+      "env": { "FINDAREPO_TELEMETRY": "0" }
+    }
+  }
+}
+```
+
 ## How it works
 
 The server is a thin, cached client over findarepo's public data feeds:
